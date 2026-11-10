@@ -33,9 +33,16 @@ Verify everything: `git --version` · `node --version` · `npm --version` — al
    ```
    git clone https://github.com/YOUR-USERNAME/Git101.git
    cd Git101
-   npm ci
+   npm install
    ```
-5. **In-house AI tool** → ask IT for the installer.
+   Takes ~1 minute. This installs the commit-message robots (`husky`, `commitlint`, `commitizen`). **No `npm install` = no robots = half the workshop won't work.**
+5. **Prove the robots are awake** — still inside `Git101`, run:
+   ```
+   npm run prepare
+   git commit --allow-empty -m "this message must be rejected"
+   ```
+   You **want** the red `✖ … husky - commit-msg script failed` screen. Red = robots awake ✅. If the commit *succeeds*, your robots are asleep — tell me before the workshop.
+6. **In-house AI tool** → ask IT for the installer.
 
 ## Rules of the repo
 
