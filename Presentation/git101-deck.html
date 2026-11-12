@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git101 — commit like a pro, release like a robot</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --text:#e6edf3; --dim:#8b949e;
+    --accent:#2f81f7; --green:#3fb950; --red:#f85149; --yellow:#d29922;
+    --mono:'SF Mono','Cascadia Code',Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    font-size:clamp(18px,2.2vw,30px);overflow:hidden}
+  section.slide{display:none;height:100vh;padding:4vh 6vw;flex-direction:column;
+    justify-content:center;position:relative;animation:in .25s ease}
+  section.slide.active{display:flex}
+  @keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1}}
+  h1{font-size:2.6em;line-height:1.15;margin-bottom:.4em}
+  h2{font-size:1.9em;line-height:1.2;margin-bottom:.5em}
+  h2 .min{color:var(--dim);font-size:.5em;font-weight:400;margin-left:.6em}
+  p,li{color:var(--text);line-height:1.5;font-size:.85em}
+  ul{padding-left:1.3em;margin:.3em 0}
+  li{margin:.25em 0}
+  .dim{color:var(--dim)} .green{color:var(--green)} .red{color:var(--red)}
+  .yellow{color:var(--yellow)} .accent{color:var(--accent)}
+  .big{font-size:1.3em} .jumbo{font-size:2.2em;font-weight:800}
+  .kbd{font-family:var(--mono);background:#21262d;border:1px solid #30363d;
+    border-radius:6px;padding:0 .35em;font-size:.8em}
+  .badge{position:absolute;top:3vh;right:5vw;font-size:.5em;font-weight:700;
+    padding:.25em .8em;border-radius:99px;letter-spacing:.05em}
+  .b-type{background:#1a7f37;color:#fff} .b-watch{background:#6e40c9;color:#fff}
+  .b-demo{background:#9a6700;color:#fff}
+  .kicker{color:var(--accent);font-weight:700;text-transform:uppercase;
+    letter-spacing:.12em;font-size:.6em;margin-bottom:.6em}
+  .cols{display:flex;gap:2.5em;align-items:center}
+  .cols>*{flex:1;min-width:0}
+  .cols .w60{flex:1.5}.cols .w40{flex:1}
+  /* fake shell */
+  .shell{background:#010409;border:1px solid #30363d;border-radius:10px;
+    margin:.5em 0;font-family:var(--mono);font-size:.62em;position:relative;
+    box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .shell .bar{background:#161b22;padding:.45em .9em;border-radius:10px 10px 0 0;
+    color:var(--dim);font-size:.9em;display:flex;align-items:center;gap:.5em}
+  .shell .bar i{width:.8em;height:.8em;border-radius:50%;display:inline-block}
+  .shell .body{padding:.9em 1.1em;overflow-x:auto}
+  .shell .ln{white-space:pre;line-height:1.55}
+  .shell .p{color:var(--green)} .shell .out{color:var(--dim)}
+  .shell .err{color:var(--red)} .shell .ok{color:var(--green)}
+  .shell .copy{position:absolute;top:.4em;right:.6em;background:#21262d;color:var(--dim);
+    border:1px solid #30363d;border-radius:6px;padding:.25em .7em;font-size:.95em;
+    font-family:inherit;cursor:pointer}
+  .shell .copy:hover{color:var(--text)}
+  /* chips / tables */
+  table{border-collapse:collapse;width:100%;font-size:.72em;margin:.4em 0}
+  th,td{border:1px solid #30363d;padding:.5em .8em;text-align:left}
+  th{background:var(--panel)}
+  td code,.mono{font-family:var(--mono);font-size:.95em}
+  .hl{background:rgba(47,129,247,.22);color:var(--accent);border-radius:6px;padding:.05em .35em;box-decoration-break:clone}
+  /* presenter timer (slide 8) */
+  .deck-timer{display:inline-block;align-self:flex-start;margin:.2em 0 0 1px;font-family:var(--mono);font-weight:700;
+    font-size:28px;color:var(--green);background:var(--panel);border:2px solid #30363d;border-radius:10px;padding:.1em .45em}
+  .deck-timer.warn{color:var(--yellow);border-color:var(--yellow)}
+  .deck-timer.danger{color:var(--red);border-color:var(--red)}
+  .deck-timer.over{animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:.35}}
+  .card{background:var(--panel);border:1px solid #30363d;border-radius:12px;
+    padding:1em 1.3em;margin:.4em 0}
+  .card.hot{border-color:var(--red);box-shadow:0 0 25px rgba(248,81,73,.15)}
+  .card.good{border-color:var(--green)}
+  .arrow{font-size:1.4em;color:var(--accent);align-self:center}
+  .foot{position:absolute;bottom:3vh;left:5vw;right:5vw;display:flex;
+    justify-content:space-between;color:var(--dim);font-size:.45em}
+  /* chrome */
+  #bar{position:fixed;bottom:0;left:0;height:4px;background:var(--accent);
+    width:0;transition:width .2s;z-index:10}
+  #hint{position:fixed;bottom:12px;right:16px;color:var(--dim);font-size:12px;z-index:10}
+  #pageno{position:fixed;bottom:12px;left:16px;color:var(--dim);font-size:14px;
+    font-family:var(--mono);z-index:10}
+  #notes{position:fixed;bottom:0;left:0;right:0;background:#161b22ee;
+    border-top:2px solid var(--accent);padding:1em 6vw;font-size:15px;
+    color:var(--dim);display:none;max-height:32vh;overflow:auto;z-index:9}
+  #notes.show{display:block}
+  #notes b{color:var(--yellow)}
+  section.slide aside.notes{display:none} /* presenter-only: N copies the active slide's aside into #notes */
+  .tree{display:flex;align-items:stretch;gap:1em;font-size:.8em;margin:.5em 0}
+  .tree .z{background:var(--panel);border:2px solid #30363d;border-radius:12px;
+    padding:.7em 1.1em;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:center}
+  .tree .z b{display:block;color:var(--accent)}
+  .tree .z small{color:var(--dim);font-size:.75em}
+  .tree .z br{display:none} /* children stack on their own line now — the old manual breaks are no-ops */
+  .conflict{font-family:var(--mono);font-size:.6em;white-space:pre;line-height:1.6;
+    background:#010409;border:1px solid #30363d;border-radius:10px;padding:1em 1.3em}
+  /* interactive terminal */
+  .shell .ln.hide{display:none}
+  .shell .ln.next{cursor:text}
+  .shell .ln.next::after{content:'▋';color:var(--green);margin-left:.15em;
+    animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .shell .typein{background:transparent;border:none;outline:none;color:var(--text);
+    font:inherit;padding:0;caret-color:var(--green)}
+  .shell .ghost{color:#424c5a}
+  .shell .ln.shake{animation:shake .25s}
+  @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+</style>
+</head>
+<body>
+
+<!-- ============ BLOCK 0 ============ -->
+<section class="slide">
+  <div class="kicker">ITPSS · Database team · 40 min</div>
+  <h1>Git101</h1>
+  <p class="big">Commit with standards. Release features automatically.</p>
+  <p class="dim" style="margin-top:1em">Git · GitHub · conventional commits · CI checks · auto versioning with Semantic Versioning<br></p>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>Vibe coding needs a seatbelt</h2>
+  <div class="cols">
+    <div><p class="big">AI can write your code in seconds.</p>
+    <p class="dim">It can also delete it in seconds.</p></div>
+    <div><div class="card good"><b class="green">Git = the undo button for AI.</b>
+    <p>Every commit is a save point. Anything the agent does, you can roll back.</p></div></div>
+  </div>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>The 4 places your file can be <span class="min">the whole of Git, honestly</span></h2>
+  <div class="tree">
+    <div class="z"><b>Local</b>the files on your laptop<br><small>you edit freely here</small></div>
+    <span class="arrow">→</span>
+    <div class="z"><b>Staging</b>put your progress here<br><small>before you commit · <span class="mono">git add</span> = "put it in"</small></div>
+    <span class="arrow">→</span>
+    <div class="z"><b>Repo</b>saved history on your laptop<br><small><span class="mono">git commit</span> = save a snapshot, permanent</small></div>
+    <span class="arrow">→</span>
+    <div class="z"><b>GitHub</b>the cloud copy<br><small><span class="mono">git push</span> = upload it</small></div>
+  </div>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>GitHub = Git + teamwork</h2>
+  <table>
+    <tr><th>Word</th><th>Meaning, honestly</th></tr>
+    <tr><td><code>repo</code></td><td>a folder with history, in the cloud</td></tr>
+    <tr><td><code>fork</code></td><td>your own copy of someone else's repo</td></tr>
+    <tr><td><code>branch</code></td><td>a draft copy of the work, so <code>main</code> stays clean</td></tr>
+    <tr><td><code>PR</code> (pull request)</td><td>"please merge my branch" — the review + merge request</td></tr>
+  </table>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>Your cheat sheet for today</h2>
+  <div class="cols">
+    <div class="card"><span class="mono">git status / diff / add / commit</span><br><span class="mono">git switch -c · push · pull</span><br><span class="mono">npm run commit</span> <span class="dim">(the polite committer)</span><br><span class="mono">git restore · git revert · git log --oneline</span></div>
+    <div class="card"><span class="mono dim">When stuck:</span> read what Git printed — it always tells you the command.<br><span class="mono dim">When still stuck:</span> ask the AI: "explain this git output".<br><span class="mono dim">When the AI is stuck:</span> raise hand.</div>
+  </div>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>The tools on your bench <span class="min">all installed before today — setup guide has the list</span></h2>
+  <div class="cols">
+    <div>
+      <p class="kicker">You drive</p>
+      <table>
+        <tr><td><b>Git</b> <span class="dim">(Terminal · PowerShell · Git Bash)</span></td><td>the time machine — you type, it prints your next step</td></tr>
+        <tr><td><b>VS Code</b></td><td>your editor + the merge-conflict resolver</td></tr>
+        <tr><td><b>GitHub</b> <span class="dim">(browser)</span></td><td>fork, PRs, green Checks, Releases</td></tr>
+        <tr><td><b>In-house AI agent</b></td><td>pair programmer — rule: <b>AI explains &amp; writes code, humans type Git</b></td></tr>
+      </table>
+    </div>
+    <div>
+      <p class="kicker">The robots <span class="dim">(live in the repo, installed by <span class="mono">npm install</span>)</span></p>
+      <table>
+        <tr><td><b>husky + commitlint</b></td><td>the gate — yells at lazy commit messages</td></tr>
+        <tr><td><b>commitizen</b> <span class="mono dim">(npm run commit)</span></td><td>the polite committer — it asks, you answer</td></tr>
+        <tr><td><b>semantic-release</b></td><td>reads your messages, tags versions on merge</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>What you'll actually do today</h2>
+  <div class="tree">
+    <div class="z"><b>1 · FORK + wake robot</b>your own copy, on GitHub</div>
+    <span class="arrow">→</span>
+    <div class="z"><b>2 · CLONE + npm install</b>bring it home</div>
+    <span class="arrow">→</span>
+    <div class="z"><b>3 · DRAFT + COMMIT</b>your roster line, on <span class="mono">roster</span></div>
+  </div>
+  <div class="tree">
+    <div class="z"><b>4 · PUSH + PR</b>roster → main<small><b>inside YOUR fork</b></small></div>
+    <span class="arrow">→</span>
+    <div class="z"><b>5 · Resolving Conflict</b>live demo of conflict resolution</div>
+    <span class="arrow">→</span>
+    <div class="z"><b>6 · Release & Revert</b></div>
+  </div>
+</section>
+
+<!-- ============ BLOCK 2 : FORK & CLONE ============ -->
+<section class="slide">
+  <span class="badge b-demo">SETUP CHECK</span>
+  <h2>You already forked it</h2>
+  <p class="big">github.com/<span class="accent">&lt;you&gt;</span>/Git101 exists? <span class="green">✔ good.</span></p>
+  <p class="dim">Nope? top-right of <span class="mono hl">github.com/iman-izzat/Git101</span> → <b>Fork</b> → Create fork.</p>
+  <p class="big">You have <span class="yellow">2 minutes</span> to fork the repo. Go.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-demo">SETUP CHECK</span>
+  <h2>Wake the robot <span class="min">forks ship with Actions asleep</span></h2>
+  <div class="cols">
+    <div class="card">On <b>your fork</b>:<br><b>Settings → Actions → General</b><br>1. <b>Allow all actions</b><br>2. Workflow permissions → <b>Read and write</b><br>Save.</div>
+    <div class="card hot"><b class="red">Skip this = silent failure.</b><br><p>Git will work, PRs will merge — but no checks, no version tags, and nothing tells you why.</p></div>
+  </div>
+  <p class="big">You have <span class="yellow">1 minute</span> to wake the robot. Go.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Bring it home</h2>
+  <div class="shell"><div class="bar"><i style="background:#f85149"></i><i style="background:#d29922"></i><i style="background:#3fb950"></i> terminal</div>
+    <div class="body">
+      <div class="ln"><span class="p">$</span> <span class="cmd">git clone https://github.com/YOUR-USERNAME/Git101.git</span></div>
+      <div class="ln"><span class="p">$</span> <span class="cmd">cd Git101</span></div>
+      <div class="ln"><span class="p">$</span> <span class="cmd">code .</span></div>
+    </div>
+  </div>
+  <p>VS Code opens the repo. Green <span class="mono">main</span> in the bottom-left corner = you're on the main branch.</p>
+  <div class="card" style="font-size:.8em">Alternative: let the agent do the clone — paste this into your agent chat:<br><br>
+  <i class="accent">"I have forked Git101 on GitHub — my username is YOUR-USERNAME. Clone my fork https://github.com/YOUR-USERNAME/Git101.git onto my laptop, cd into the folder, and open it in VS Code. Run the commands for me and explain what each one does."</i></div>
+  <p class="dim">⚠ Make sure you clone <b class="red">your forked repo</b>.</p>
+  <aside class="notes">This is the hands-free lane for whoever can't get the terminal working — agent RUNS the clone here (deliberate exception to the slide 18 rule, just for setup). Either way, check their screen: VS Code open, green main bottom-left, folder named Git101 under THEIR account.</aside>
+</section>
+
+<!-- ============ BLOCK 3 : FIRST COMMIT & THE GATE ============ -->
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>A branch = a draft copy</h2>
+  <div class="shell"><div class="bar">terminal</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git switch -c roster</span></div>
+    <div class="ln out">Switched to a new branch 'roster'</div>
+  </div></div>
+  <p class="dim">You just made a parallel universe called <span class="mono">roster</span>. <span class="mono">main</span> is untouched — you'll do all of today's work here, and <span class="mono">main</span> only gets your work later, via a PR.</p>
+  <aside class="notes">Keep it one concept: branch = safe draft. Create it here so main stays at the fork base — that's what makes the conflict drill land on roster.</aside>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Task: sign the roster</h2>
+  <p class="big">In VS Code, open <span class="mono">README.md</span> → <b>Trainee roster</b> → add one line:</p>
+  <div class="shell"><div class="bar">README.md</div><div class="body"><div class="ln out">- Alice — database admin, want AI to write my SQL reports</div></div></div>
+  <p class="dim">Also edit the "why you're here" sentence if you like. <b>Save the file.</b></p>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Ask Git what changed</h2>
+  <div class="shell"><div class="bar">terminal</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git status</span></div>
+    <div class="ln out">On branch roster
+Changes not staged for commit:
+        modified:   README.md</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git diff</span></div>
+    <div class="ln out">- Iman — teaching Git so AI can write the code in peace.
+<span class="ok">+- Alice — database admin, want AI to write my SQL reports</span></div>
+  </div></div>
+  <p><span class="accent">status</span> = which files moved · <span class="accent">diff</span> = exactly which lines. <b>Read the output — Git is always telling you what to do next.</b></p>
+  <aside class="notes">Green + = added, red − = removed. VS Code shows the same thing in its Source Control tab.</aside>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Now try to be lazy <span class="min">on purpose</span></h2>
+  <div class="shell"><div class="bar">terminal</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git commit -am "updated stuff"</span></div>
+    <div class="ln err">⧗   input: updated stuff
+✖   subject may not be empty [subject-empty]
+✖   type may not be empty [type-empty]
+✖   found 2 problems, 0 warnings
+husky - commit-msg script failed (code 1)</div>
+  </div></div>
+  <p class="big red">RED? <b>Good.</b> A robot on your laptop just rejected that message.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>Why it yelled: messages are code</h2>
+  <div class="card" style="font-family:var(--mono);font-size:.8em;white-space:pre"><span class="green">feat</span>(<span class="yellow">roster</span>): <span class="accent">add Alice to trainee roster</span>
+<span class="green">type</span> <span class="yellow">scope</span>    <span class="accent">what &amp; why, imperative</span></div>
+  <table>
+    <tr><th>type</th><th>meaning</th><th>the robot does…</th></tr>
+    <tr><td><code>fix:</code></td><td>bug fix</td><td>patches version <code>1.0.0 → 1.0.<b class="yellow">1</b></code></td></tr>
+    <tr><td><code>feat:</code></td><td>new capability</td><td>minor bump <code>1.0.0 → 1.<b class="yellow">1</b>.0</code></td></tr>
+    <tr><td><code>feat!:</code> / <code>BREAKING CHANGE:</code></td><td>breaks how people use it</td><td>major bump <code>1.0.0 → <b class="yellow">2</b>.0.0</code></td></tr>
+    <tr><td><code>docs:</code> <code>chore:</code></td><td>text / housekeeping</td><td>no version bump (on purpose)</td></tr>
+  </table>
+  <p class="dim">The message isn't decoration. It's <b>machine input</b> — CI reads it, releases are generated from it.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Do it the polite way</h2>
+  <div class="shell"><div class="bar">terminal</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git add README.md</span></div>
+    <div class="ln out dim">← file moves into the staging basket</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git commit -m "docs: add <span class="accent">your-name</span> to trainee roster"</span></div>
+    <div class="ln ok">[roster abc1234] docs: add your-name to trainee roster</div>
+  </div></div>
+  <p class="green big">Committed. That commit is forever in your history.</p>
+  <aside class="notes">One sentence on staging: "commit only seals what's in the basket — add is what puts it there. Lets you split messy work into clean saves." Watch for forgot-to-save-in-VS-Code (status shows nothing changed).</aside>
+</section>
+
+<!-- ============ BLOCK 4 : COMMITIZEN ============ -->
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Never memorize it again</h2>
+  <div class="shell"><div class="bar">terminal — make one more edit first (your "why you're here" line)</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git add README.md</span></div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">npm run commit</span></div>
+    <div class="ln out" data-q="? Select the TYPE of change:" data-a="docs" data-note="(↑↓ + Enter)">? Select the TYPE of change: <span class="accent">docs</span> <span class="dim">(↑↓ + Enter)</span></div>
+    <div class="ln out" data-q="? Description:" data-a="explain why I'm here">? Description: <span class="accent">explain why I'm here</span></div>
+    <div class="ln out" data-q="? Is this a breaking change?" data-a="n">? Is this a breaking change? <span class="accent">n</span></div>
+    <div class="ln ok" data-echo>✔ committed: docs: explain why I'm here</div>
+  </div></div>
+  <p><b>commitizen</b> = the robot asks, you answer, the message is always valid.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Ask the AI — it's your Git tutor</h2>
+  <div class="card">Prompt to try in the in-house agent right now:<br><br>
+  <i class="accent">"Here is my git status output: … — explain what it means and what I should do next."</i></div>
+  <p class="dim">Rule for today: <b>the AI explains and writes code; the human types Git commands.</b> You need the muscle memory — the agent will be fast tomorrow, so you must be able to read what it did.</p>
+</section>
+
+<!-- ============ BLOCK 5 : PR IN YOUR FORK ============ -->
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Push & open the PR</h2>
+  <div class="shell"><div class="bar">terminal</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git push -u origin roster</span></div>
+    <div class="ln out">remote: <span class="ok">Create a pull request for 'roster' on GitHub:</span>
+remote: https://github.com/YOUR-USERNAME/Git101/pull/new/roster</div>
+  </div></div>
+  <p>Open that link → <b>base: <span class="mono green">main</span> ← compare: <span class="mono yellow">roster</span></b> → <b>Create pull request</b>.</p>
+  <div class="card hot"><b class="red">⚠ TRAP:</b> GitHub quietly defaults <b>base repository = iman-izzat/Git101</b> — a PR aimed at <i>me</i>. Click <b>base repository</b> → pick <b>YOUR-USERNAME/Git101</b>. Rule: <b>both sides must read YOUR-USERNAME.</b> Already created it against iman-izzat? Close it, make it again with the right base.</div>
+  <aside class="notes">If stray PRs land on my repo: the attendee closes them; sweep leftovers before the session. Fallback URL that always opens same-repo: github.com/YOUR-USERNAME/Git101/compare/main...roster?expand=1</aside>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Check the Checks tab — hands off the merge button</h2>
+  <div class="card">In your PR page, check:<br>
+  1. <b>Files changed</b> — is it only what you meant to change?<br>
+  2. <b>Checks</b> — CI lint: <span class="green">✔ pending → success</span> (~30s)<br>
+  3. The green <b>Merge pull request</b> button is right there… <b>Don't click it yet.</b></div>
+  <p class="dim">(Leave the PR open — you'll need it in 5 minutes. Self-approving is normally rude in teams; in your own fork it's how you learn. In team repos, a human reviews first.)</p>
+</section>
+
+<!-- ============ BLOCK 6 : CONFLICT DRILL ============ -->
+<section class="slide">
+  <span class="badge b-demo">PRESENTER SEEDS</span>
+  <h2>Someone touched your file</h2>
+  <p class="jumbo red">☠</p>
+  <p class="big">I am now editing the <b>exact same roster line as you</b> — on my repo. Same line, different words.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-demo">PRESENTER DEMO</span>
+  <h2>Pull the fire in <span class="min">sit on your hands — my machine, my fire</span></h2>
+  <div class="shell"><div class="bar">terminal — on my machine</div><div class="body">
+    <div class="ln out dim"># my seed line is already on main (the web edit you just saw) — pull it down</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git switch main</span></div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git pull origin main</span></div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git switch roster-demo</span></div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git merge main</span></div>
+    <div class="ln err">Auto-merging README.md
+CONFLICT (content): Merge conflict in README.md
+Automatic merge failed; fix conflicts and then commit the result.</div>
+  </div></div>
+  <p class="red">SCARY SCREEN — one day this will be <i>your</i> screen. Read it: Git is <b>telling you exactly</b> what to do next.</p>
+  <aside class="notes">Nobody presses Sync fork or touches a keyboard during this drill. If someone synced their fork early, their PR shows conflicts — desk visit (see guide), they follow my demo's steps one time.</aside>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>Anatomy of a conflict</h2>
+  <div class="conflict"><<<<<<< HEAD
+- Alice — database admin, want AI to write my SQL reports <span class="green">(yours)</span>
+=======
+- Alice — here to learn Git before the AI learns it for me <span class="yellow">(mine, the intruder)</span>
+>>>>>>> main</div>
+  <div class="cols"><div class="card"><span class="mono"><<<<<<< HEAD</span> your version<br><span class="mono">=======</span> divider<br><span class="mono">>>>>>>> main</span> incoming version</div>
+  <div class="card good"><b class="green">My job, live:</b> decide the final text (usually keep both ideas), then <b>delete all the arrow lines</b></div></div>
+</section>
+
+<section class="slide">
+  <span class="badge b-demo">PRESENTER DEMO</span>
+  <h2>Resolve & finish</h2>
+  <div class="shell"><div class="bar">terminal — on my machine</div><div class="body">
+    <div class="ln out dim"># open README.md in VS Code — it highlights the conflict; keep both ideas, remove the arrows, Save</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git add README.md</span></div>
+    <div class="ln out dim"># add on a conflicted file means: "I resolved it, trust me"</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git commit</span></div>
+    <div class="ln out">Merge branch 'main' into roster-demo</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git push</span></div>
+  </div></div>
+  <p>Back on GitHub: my PR is <span class="green">mergeable again</span> → <b>Merge</b>.</p>
+  <p class="big green">NOW YOU: your PR is still clean — <b>click Merge on yours. You approve yourself.</b></p>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>Wait… no version bump?</h2>
+  <div class="cols">
+    <div><p class="big">Your merge landed on your fork's <span class="mono">main</span>. Actions ran <span class="mono">Release</span>… and the Releases page says:</p>
+    <div class="card">nothing happened</div></div>
+    <div><div class="card good"><b class="green">Correct!</b><br><p>You committed <span class="mono">docs:</span> — text change. <b>docs/chore never bump versions.</b></p><p>Only <span class="mono">fix:</span> and <span class="mono">feat:</span> move the number.</p></div></div>
+  </div>
+  <p>The robot is asleep when it should be. In 10 minutes you'll wake it up properly.</p>
+</section>
+
+<!-- ============ BLOCK 7 : SEMVER PAYOFF ============ -->
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Now wake the robot: ship a feature</h2>
+  <div class="shell"><div class="bar">terminal</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git switch -c feature</span></div>
+    <div class="ln out dim"># add a new file NOTES.md — this exact shape, swap in the commands you actually used:</div>
+    <div class="ln out"># My Git commands today
+## Save · git add &lt;file&gt; · npm run commit
+## Branch · git switch -c &lt;branch&gt;
+## Sync · git push · git pull</div>
+    <div class="ln out dim"># 3+ ## sections, commands under each — the next two demos break and eat this file</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git add NOTES.md</span> <span class="p">&&</span> <span class="cmd">npm run commit</span></div>
+    <div class="ln out" data-q="? Select the TYPE of change:" data-a="feat" data-cls="ok" data-note="← choose it this time">? Select the TYPE of change: <span class="ok">feat</span> <span class="dim">← choose it this time</span></div>
+    <div class="ln out" data-q="? Description:" data-a="add trainee cheat sheet NOTES.md">? Description: <span class="accent">add trainee cheat sheet NOTES.md</span></div>
+    <div class="ln ok" data-echo>✔ committed: feat: add trainee cheat sheet NOTES.md</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git push -u origin feature</span></div>
+  </div></div>
+  <p>PR it (feature → main), merge. Then go to <b>Actions</b> and <b>Releases</b>. Watch.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>The big one: make it <span class="red">break</span></h2>
+  <div class="shell"><div class="bar">terminal</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git switch main</span> <span class="p">&&</span> <span class="cmd">git pull origin main</span> <span class="p">&&</span> <span class="cmd">git switch -c breaking</span></div>
+    <div class="ln out dim"># change NOTES.md so the old title/command format is GONE (a real change people would have to adapt to)</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git add NOTES.md</span> <span class="p">&&</span> <span class="cmd">npm run commit</span></div>
+    <div class="ln out" data-q="? Select the TYPE of change:" data-a="feat" data-cls="ok">? Select the TYPE of change: <span class="ok">feat</span></div>
+    <div class="ln out" data-q="? Is this a breaking change?" data-a="Yes" data-cls="red">? Is this a breaking change? <span class="red">Yes</span></div>
+    <div class="ln out" data-q="? Description:" data-a="replace cheatsheet format">? Description: <span class="accent">replace cheatsheet format</span></div>
+    <div class="ln ok" data-echo>✔ committed: feat!: replace cheatsheet format</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git push -u origin breaking</span></div>
+  </div></div>
+  <p>PR → merge → Releases goes to a <span class="red">major</span> version. Your repo, your number.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>Why anyone cares</h2>
+  <p class="big">2024. A team updates one library from <span class="mono">1.4.2</span> → <span class="mono red">2.0.0</span> because "it's just a number".</p>
+  <div class="card hot"><p>Production dashboard dead at 8am. Why: <span class="mono">2.0.0</span> <b>removed a command their code relied on.</b> The maintainer had warned everyone — <b>in the version number.</b> Nobody read it.</p></div>
+  <p>The whole system works because someone wrote <span class="mono red">feat!:</span> and a robot turned it into <span class="mono red">2.0.0</span>. <b>That's why commitlint is a gate, not a suggestion.</b></p>
+  <aside class="notes">MAJOR.MINOR.PATCH: 'breaking changes/ new feats/ fixes'.</aside>
+</section>
+
+<!-- ============ BLOCK 8 : AI MADE A MESS ============ -->
+<section class="slide">
+  <span class="badge b-demo">PRESENTER DEMO</span>
+  <h2>The AI made a mess</h2>
+  <p class="big">Ask the agent: <i class="accent">"reformat NOTES.md nicely"</i>.</p>
+  <div class="card hot">Agent runs done. <span class="mono">NOTES.md</span> half-gone. You did <b>not</b> commit.</p></div>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Nothing is lost</h2>
+  <div class="shell"><div class="bar">terminal — do it to your own NOTES.md via the agent (or just delete a section by hand and blame the AI)</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git status</span></div>
+    <div class="ln out">modified: NOTES.md</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git diff</span></div>
+    <div class="ln err">- the commands I used today
+- ...all the rest...   ← the damage, in black and white</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git restore NOTES.md</span></div>
+    <div class="ln ok"># back. exactly as of your last commit. one command.</div>
+  </div></div>
+  <p class="big green">The undo button for AI, promised on slide 2: <span class="mono green">git restore</span>.</p>
+  <aside class="notes">#1 RULE: <b>COMMIT OFTEN</b></aside>
+</section>
+
+<section class="slide">
+  <span class="badge b-type">YOU TYPE</span>
+  <h2>Already committed the mess?</h2>
+  <div class="shell"><div class="bar">terminal</div><div class="body">
+    <div class="ln"><span class="p">$</span> <span class="cmd">git log --oneline</span></div>
+    <div class="ln out">a1b2c3d feat: reformat notes badly
+9f8e7d6 docs: add roster
+2c4a6e8 feat: workshop scaffold</div>
+    <div class="ln"><span class="p">$</span> <span class="cmd">git revert a1b2c3d</span></div>
+    <div class="ln ok"># a NEW commit that is the exact opposite of the bad one. History stays honest.</div>
+  </div></div>
+  <div class="card hot"><b class="red">Golden rules</b> — the only two "never"s of today:<br>
+  ① never <span class="mono">git push -f</span> (it rewrites shared history — the thing you must never do to teammates)<br>
+  ② never delete the <span class="mono">.git</span> folder (that IS the time machine)</div>
+  <aside class="notes">distinction: restore = uncommitted damage; revert = committed damage. One line: 'revert makes a new commit, it does not delete history — your mistakes become the documentation of the fix.'</aside>
+</section>
+
+<!-- ============ BLOCK 9 : LANDING ============ -->
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>What you own now</h2>
+  <ul>
+    <li>✔ a fork of Git101 with <b>your</b> merged PRs</li>
+    <li>✔ green Actions checks you caused</li>
+    <li>✔ <b>version tags created by a robot</b> from your commit messages</li>
+    <li>✔ a merge conflict solved live on the big screen — and <b>you</b> merged your own PRs</li>
+    <li>✔ <span class="mono">restore</span>/<span class="mono">revert</span> — the AI seatbelt</li>
+  </ul>
+  <p class="dim">Same repo, next segment: we let the agent write code in it — and watch Git catch it.</p>
+</section>
+
+<section class="slide">
+  <span class="badge b-watch">WATCH</span>
+  <h2>Deliberately not covered (next session)</h2>
+  <ul>
+    <li class="dim">branching strategies & code-review etiquette</li>
+    <li class="dim">writing GitHub Actions workflows yourself</li>
+    <li class="dim">deploying to servers/cloud</li>
+    <li class="dim">rebase, cherry-pick, stash — real, but not day one</li>
+  </ul>
+  <div class="card" style="margin-top:1em">Stuck later: ① read Git's own output ② ask the agent to explain it ③ ask Iman when the agent is stuck.</div>
+</section>
+
+<section class="slide">
+  <h1 class="jumbo">Over to <span class="accent">Dawi</span></h1>
+  <p class="big">Now we vibe!</p>
+  <p class="dim" style="margin-top:2em">Questions? … Cheat sheet: the repo's <span class="mono">NOTES.md</span>, or ask the agent. 👋</p>
+</section>
+
+<div id="bar"></div>
+<div id="pageno"></div>
+<div id="hint">← → navigate · <b>click terminal & type</b> (Esc=restart terminal) · <b>C</b> copy all cmds · <b>N</b> notes · <b>R</b> reveal all output · <b>F</b> fullscreen · <b>1-9</b> jump to block</div>
+<div id="notes"></div>
+
+<script>
+const slides=[...document.querySelectorAll('section.slide')];
+let cur=0;
+
+/* ---- interactive terminals ----
+   Command rows contain .cmd; their output rows (class out/err/ok) stay hidden until
+   the command is typed correctly + Enter (or empty Enter / R to force). Typing shows
+   a ghost completion; wrong text shakes. Esc or slide change resets the terminal. */
+document.querySelectorAll('.shell').forEach(sh=>{
+  const rows=[...sh.querySelectorAll('.ln')];
+  const groups=[];
+  rows.forEach(r=>{if(r.querySelector('.cmd'))groups.push({cmd:r,cmdText:r.textContent.replace(/^\s*\$\s*/,'').trim(),outs:[],_orig:r.innerHTML});});
+  groups.forEach((g,i)=>{
+    const end=groups[i+1]?rows.indexOf(groups[i+1].cmd):rows.length;
+    g.outs=rows.slice(rows.indexOf(g.cmd)+1,end).filter(r=>/\b(out|err|ok)\b/.test(r.className));
+    g.outs.forEach(o=>{if(o.dataset.q)o._orig=o.innerHTML;});
+  });
+  sh._reset=()=>{
+    sh._gen=(sh._gen||0)+1; // invalidate any in-flight print
+    sh._answers={};
+    groups.forEach(g=>{
+      g.cmd.innerHTML=g._orig;
+      g.cmd.classList.remove('next','shake');
+      g.outs.forEach(o=>{if(o._orig)o.innerHTML=o._orig;o.classList.add('hide');});
+    });
+    if(!groups.length)return;
+    arm(groups[0]);
+    setTimeout(()=>{const a=sh.querySelector('.typein');a&&a.focus();},50);
+  };
+  function renderQ(row,val){
+    const q=row.dataset.q,a=val||row.dataset.a,cls=row.dataset.cls||'accent';
+    row.innerHTML=q+' <span class="'+cls+'">'+a.replace(/</g,'&lt;')+'</span>'+(row.dataset.note?' <span class="dim">'+row.dataset.note+'</span>':'');
+  }
+  function record(row,val){
+    const q=row.dataset.q;
+    sh._answers=sh._answers||{};
+    if(/TYPE/i.test(q))sh._answers.type=val;
+    else if(/Description/i.test(q))sh._answers.desc=val;
+    else if(/breaking/i.test(q))sh._answers.brk=val;
+  }
+  function composeEcho(row){
+    const a=sh._answers||{};
+    const msg=(a.type||row.dataset.d||'docs')+(a.brk&&/^y/i.test(a.brk)?'!':'')+': '+(a.desc||'');
+    if(a.type)row.textContent='\u2714 committed: '+msg;
+  }
+  function askQ(row,next){
+    // show the prompt, let presenter type any answer; empty Enter = expected answer
+    row.classList.remove('hide');
+    row.innerHTML=row.dataset.q+' ';
+    const inp=document.createElement('input');inp.className='typein';inp.spellcheck=false;inp.autocomplete='off';
+    const ghost=document.createElement('span');ghost.className='ghost';
+    ghost.textContent=row.dataset.a;
+    row.append(inp,ghost);
+    const upd=()=>{const a=row.dataset.a;ghost.textContent=a.startsWith(inp.value)?a.slice(inp.value.length):'';inp.size=Math.max(inp.value.length,1);};
+    inp.addEventListener('input',upd);
+    inp.addEventListener('keydown',e=>{
+      e.stopPropagation();
+      if(e.key==='Tab'){e.preventDefault(); // shell-style: complete one word at a time
+        const t=row.dataset.a;
+        if(t.startsWith(inp.value)){
+          let target='';for(const w of t.split(' ')){target+=target?' '+w:w;if(target.length>inp.value.length)break;}
+          if(target.length>inp.value.length){inp.value=target;upd();}
+        }
+        return;}
+      if(e.key==='Enter'){
+        const val=inp.value.trim()||row.dataset.a;
+        renderQ(row,inp.value.trim()||null);record(row,val);next();}
+      if(e.key==='Escape'){e.stopPropagation();sh._reset();}
+    });
+    setTimeout(()=>{const b=row.querySelector('.typein');b&&b.focus();},30);
+  }
+  function revealSeq(outs,done2){
+    // print output rows one by one; rows with data-q become interactive cz prompts
+    const gen=sh._gen;
+    let i=0;
+    const step=()=>{
+      if(sh._gen!==gen)return; // terminal was reset while printing
+      if(i>=outs.length){done2&&done2();return;}
+      const row=outs[i];
+      if(sh._skip){sh._skip=false;outs.slice(i).forEach(o=>{if(o.dataset.q){record(o,o.dataset.a);renderQ(o);}else{if('echo' in o.dataset)composeEcho(o);o.classList.remove('hide');}});done2&&done2();return;}
+      if(row.dataset.q){askQ(row,()=>{i++;setTimeout(step,140);});}
+      else {if('echo' in row.dataset)composeEcho(row);row.classList.remove('hide');i++;setTimeout(step,110+Math.random()*160);}
+    };
+    step();
+  }
+  function arm(g){
+    g.cmd.innerHTML='<span class="p">$</span> ';
+    const inp=document.createElement('input');inp.className='typein';inp.spellcheck=false;inp.autocomplete='off';
+    const ghost=document.createElement('span');ghost.className='ghost';
+    g.cmd.append(inp,ghost);g.cmd.classList.add('next');
+    const upd=()=>{ghost.textContent=g.cmdText.startsWith(inp.value)?g.cmdText.slice(inp.value.length):'';inp.size=Math.max(inp.value.length,1);};
+    inp.addEventListener('input',()=>{sh._skip=false;upd();});
+    inp.addEventListener('keydown',e=>{
+      e.stopPropagation();
+      if(e.key==='Tab'){e.preventDefault(); // shell-style: complete one word at a time
+        const t=g.cmdText;
+        if(t.startsWith(inp.value)){
+          let target='';for(const w of t.split(' ')){target+=target?' '+w:w;if(target.length>inp.value.length)break;}
+          if(target.length>inp.value.length){inp.value=target;upd();}
+        }
+        return;}
+      if(e.key==='Enter'){
+        if(inp.value.trim()===''||norm(inp.value)===norm(g.cmdText)){
+          g.cmd.innerHTML=g._orig;g.cmd.classList.remove('next');
+          const nx=groups[groups.indexOf(g)+1];
+          const cont=()=>{if(nx){arm(nx);setTimeout(()=>{const a=sh.querySelector('.ln.next .typein');a&&a.focus();},30);}};
+          // explain what the command just did (empty Enter = force, no explanation)
+          const an=(inp.value.trim()!==''&&window.ANIM)?window.ANIM.pick(g.cmdText,g.outs):null;
+          if(an&&!g.outs.some(o=>o.dataset.q))window.ANIM.show(g.cmdText,an,()=>revealSeq(g.outs,cont));
+          else if(an)revealSeq(g.outs,()=>window.ANIM.show(g.cmdText,an,cont));
+          else revealSeq(g.outs,cont);
+        } else {g.cmd.classList.add('shake');setTimeout(()=>g.cmd.classList.remove('shake'),300);}
+      }
+      if(e.key==='Escape'){e.stopPropagation();sh._reset();}
+    });
+    upd();
+  }
+  const norm=s=>s.trim().replace(/\s+/g,' ');
+  sh.addEventListener('click',e=>{
+    if(e.target.closest('.copy'))return;
+    sh._skip=true; // clicking mid-print = skip animation
+    const a=sh.querySelector('.typein');a&&a.focus();});
+  sh._reset();
+});
+
+// one copy button per shell block: copies all $ command lines
+slides.forEach(s=>s.querySelectorAll('.shell').forEach(sh=>{
+  const b=document.createElement('button');b.className='copy';b.textContent='copy cmds';
+  b.onclick=e=>{e.stopPropagation();
+    const cmds=[...sh.querySelectorAll('.cmd')].map(c=>c.textContent.trim()).join('\n');
+    navigator.clipboard.writeText(cmds);b.textContent='✔ copied';setTimeout(()=>b.textContent='copy cmds',1200);};
+  sh.appendChild(b);
+}));
+// click-to-copy on any single command
+document.body.addEventListener('click',e=>{const c=e.target.closest('.cmd');
+  if(c)navigator.clipboard.writeText(c.textContent.trim());});
+const noteEl=document.getElementById('notes');let showNotes=false;
+function revealAll(){slides[cur].querySelectorAll('.shell').forEach(sh=>{
+  sh.querySelectorAll('.ln.hide').forEach(l=>l.classList.remove('hide'));
+  sh.querySelectorAll('.typein,.ghost').forEach(i=>i.remove());
+  sh.querySelectorAll('.ln.next').forEach(n=>{n.classList.remove('next');if(n._orig)n.innerHTML=n._orig;});
+});}
+function go(n){cur=Math.max(0,Math.min(slides.length-1,n));
+  slides.forEach((s,i)=>s.classList.toggle('active',i===cur));
+  slides[cur].querySelectorAll('.shell').forEach(sh=>sh._reset&&sh._reset());
+  document.getElementById('bar').style.width=((cur+1)/slides.length*100)+'%';
+  document.getElementById('pageno').textContent=(cur+1)+' / '+slides.length;
+  noteEl.innerHTML=slides[cur].querySelector('aside.notes')?.innerHTML||'';}
+addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')go(cur+1);
+  else if(e.key==='ArrowLeft'||e.key==='PageUp')go(cur-1);
+  else if(e.key==='Home')go(0);else if(e.key==='End')go(slides.length-1);
+  else if(e.key.toLowerCase()==='n'){showNotes=!showNotes;noteEl.classList.toggle('show',showNotes);}
+  else if(e.key.toLowerCase()==='f')document.documentElement.requestFullscreen?.();
+  else if(e.key.toLowerCase()==='r')revealAll();
+  else if(e.key.toLowerCase()==='c'){const cmds=[...slides[cur].querySelectorAll('.cmd')].map(c=>c.textContent.trim()).join('\n');
+    if(cmds)navigator.clipboard.writeText(cmds);}
+  else if(/^[1-9]$/.test(e.key)){const targets={1:0,2:7,3:10,4:16,5:18,6:20,7:25,8:28,9:31};go(targets[e.key]??0);}
+});
+go(0);
+</script>
+<script>
+/* ===== Presenter timers: countdowns on the setup-check slides. =====
+   Each timer auto-starts when you arrive on its slide and resets+hides when you
+   leave. Press T on a timer slide to restart its full time. To add one to
+   another slide: put its 0-based index → seconds in TIMERS, and add the matching
+   "You have X minutes …" line to the slide markup so text and clock agree. */
+(()=>{
+  const TIMERS={7:120,8:60};                    // slide 8 (fork): 2:00 · slide 9 (wake robot): 1:00
+  const clock=s=>'⏱ '+String(Math.floor(s/60))+':'+String(s%60).padStart(2,'0');
+  const timers={};
+  for(const [idx,dur] of Object.entries(TIMERS)){
+    const el=document.createElement('div');
+    el.className='deck-timer'; el.style.display='none'; el.textContent=clock(dur);
+    document.querySelectorAll('section.slide')[idx].appendChild(el); // lands under the "You have …" line
+    timers[idx]={el,dur,end:0,raf:null};
+  }
+  function paint(t){
+    const left=Math.max(0,Math.round((t.end-Date.now())/1000));
+    t.el.textContent=clock(left);
+    t.el.className='deck-timer'+(left<=0?' danger over':left<=10?' danger':left<=30?' warn':'');
+    if(left>0) t.raf=requestAnimationFrame(()=>paint(t));
+  }
+  function start(t){ cancelAnimationFrame(t.raf); t.end=Date.now()+t.dur*1000; t.el.style.display=''; paint(t); }
+  function stop(t){ cancelAnimationFrame(t.raf); t.el.style.display='none'; t.el.className='deck-timer'; }
+  const _go=go;
+  window.go=n=>{ for(const i in timers) (Number(i)===n)?start(timers[i]):stop(timers[i]); _go(n); }; // wrap every navigation
+  addEventListener('keydown',e=>{
+    if(e.key.toLowerCase()==='t'){
+      const cur=[...document.querySelectorAll('section.slide')].findIndex(s=>s.classList.contains('active'));
+      if(timers[cur]){ e.preventDefault(); start(timers[cur]); }
+    }
+  });
+})();
+</script>
+<script>
+/* ===== Command animations =====
+   When an attendee types a command correctly, a "what just happened" popup draws
+   what the command ACTUALLY did (branch peeling off main, commits flying to
+   GitHub, …) before the terminal output continues; prompt-style commands (cz)
+   animate after their prompts are answered. Dismiss with Esc/Enter/Space/click;
+   slide navigation closes any open popup. To cover another command: add a
+   builder to B and a pattern in pick(). Nothing here touches slide markup. */
+(()=>{
+  if(window.ANIM)return;
+  const st=document.createElement('style');
+  st.textContent=`
+    #animModal{position:fixed;inset:0;background:rgba(13,17,23,.85);display:none;align-items:center;justify-content:center;z-index:30}
+    #animModal.show{display:flex}
+    #animCard{background:#161b22;border:2px solid #2f81f7;border-radius:16px;padding:1.6em 2em;max-width:780px;width:92vw}
+    #animCard .aq-k{color:#2f81f7;font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:13px;margin-bottom:.6em}
+    #animCard .aq-c{margin:0 0 .4em;font-family:var(--mono);font-size:18px;color:#3fb950}
+    #animCard .aq-m{color:#8b949e;margin:.8em 0 .2em;font-size:15px}
+    #animCard .aq-m b{color:#e6edf3}
+    #animCard .aq-h{color:#424c5a;font-size:12px;margin-top:.8em}
+    #animStage{display:block;width:100%;height:auto}
+    #animStage text{font-family:var(--mono);font-size:14px}
+    .aq-draw{fill:none;stroke-width:3;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .9s ease}
+    .aq-draw.on{stroke-dashoffset:0}
+    .aq-pop{transform:scale(0);transform-box:fill-box;transform-origin:center;transition:transform .4s cubic-bezier(.5,1.8,.5,1)}
+    .aq-pop.on{transform:scale(1)}
+    .aq-fade{opacity:0;transition:opacity .5s}.aq-fade.on{opacity:1}
+    .aq-gone{opacity:0!important}`;
+  document.head.appendChild(st);
+  const modal=document.createElement('div');modal.id='animModal';
+  modal.innerHTML='<div id="animCard"><div class="aq-k">what just happened</div><h3 class="aq-c"></h3><svg id="animStage" viewBox="0 0 720 260"></svg><p class="aq-m"></p><p class="aq-h">Esc, Enter or click to continue</p></div>';
+  document.body.appendChild(modal);
+  const stage=modal.querySelector('#animStage'),cmdEl=modal.querySelector('.aq-c'),msgEl=modal.querySelector('.aq-m'),kickEl=modal.querySelector('.aq-k'),hintEl=modal.querySelector('.aq-h');
+  const NS='http://www.w3.org/2000/svg';
+  const G='#8b949e',T='#e6edf3',A='#2f81f7',GR='#3fb950',Y='#d29922';
+  const S=(tag,a,p)=>{const e=document.createElementNS(NS,tag);for(const k in a)e.setAttribute(k,a[k]);(p||stage).appendChild(e);return e};
+  const line=(x1,y1,x2,y2,c)=>S('path',{d:`M${x1},${y1} L${x2},${y2}`,stroke:c,class:'aq-draw',pathLength:1});
+  const curve=(d,c)=>S('path',{d,stroke:c,class:'aq-draw',pathLength:1});
+  const dot=(x,y,c,r=6)=>S('circle',{cx:x,cy:y,r,fill:c,class:'aq-pop'});
+  const txt=(x,y,s,c,anchor='start',cls='aq-fade')=>{const t=S('text',{x,y,fill:c,'text-anchor':anchor,class:cls});t.textContent=s;return t};
+  const fly=(el,x,y,d='1s ease')=>{el.style.transition='transform '+d;return e=>{e.style.transform=`translate(${x||0}px,${y||0}px)`}};
+
+  /* one builder per command family — returns {parts:[ [el,delayMs,flyFn?] ], cap} */
+  const B={
+    branch(name){const p=[];
+      p.push([line(60,170,420,170,G),100]);
+      [120,250,380].forEach((x,i)=>p.push([dot(x,170,T),200+i*150]));
+      p.push([txt(430,175,'main',G),700]);
+      const hm=txt(345,150,'HEAD → main',Y);p.push([hm,850]);
+      setTimeout(()=>hm.classList.add('aq-gone'),2600);   // HEAD leaves main, joins the branch
+      p.push([curve('M380,170 C 470,170 470,90 560,90',A),1300]);
+      p.push([dot(560,90,A),2350]);
+      p.push([txt(575,95,name,A),2500]);
+      p.push([txt(500,55,'HEAD → '+name,Y),2650]);
+      return{parts:p,cap:`<b>${name}</b> was born at the last commit of <b>main</b>. <b>main did not move</b> — that's what makes branches safe.`};},
+    push(branch){const p=[];
+      p.push([line(60,190,300,190,G),100]);          // main stays put — push doesn't touch it
+      p.push([dot(150,190,T),250]);
+      p.push([txt(310,195,'main',G),600]);
+      p.push([line(60,90,300,90,A),800]);            // commits fly from YOUR branch, not main
+      [110,190,270].forEach((x,i)=>p.push([dot(x,90,A),900+i*150]));
+      p.push([txt(65,64,branch,A),1300]);
+      p.push([S('circle',{cx:620,cy:90,r:34,fill:'none',stroke:G,'stroke-width':3,class:'aq-pop'}),1500]);
+      p.push([txt(620,158,'GitHub',T,'middle'),1700]);
+      [0,1,2].forEach(i=>{const d=dot(120+i*50,90,GR);d.classList.add('aq-fade');p.push([d,1900+i*250,fly(d,400,0)]);});
+      p.push([txt(620,32,'commits copied up',GR,'middle'),3100]);
+      return{parts:p,cap:`Your commits on <b>${branch}</b> were <b>copied up</b> to your fork on GitHub. <b>main stayed put</b> — push never deletes anything, it only adds.`};},
+    merge(){const p=[];
+      p.push([line(60,180,420,180,G),100]);
+      p.push([dot(150,180,T),250]);
+      p.push([txt(430,185,'main',G),600]);
+      p.push([line(60,80,360,80,A),800]);
+      [150,280].forEach((x,i)=>p.push([dot(x,80,A),950+i*150]));
+      p.push([txt(330,62,'your branch',A),1300]);
+      p.push([curve('M360,80 C 440,80 440,180 500,180',A),1700]);
+      p.push([S('path',{d:'M505,171 L512,187 L498,187 Z',fill:Y,class:'aq-pop'}),2500]);
+      p.push([txt(700,218,'merge commit — both histories kept',Y,'end'),2650]);
+      return{parts:p,cap:'Git braided your branch back into <b>main</b> with a merge commit — nobody\'s work got overwritten.'};},
+    conflict(){const p=[];const R='#f85149';
+      p.push([line(60,190,300,190,G),100]);            // main — where the intruder edit lives
+      p.push([dot(210,190,T),250]);
+      p.push([txt(310,195,'main',G),500]);
+      p.push([line(60,70,300,70,A),400]);              // roster-demo — where YOUR edit lives
+      p.push([dot(210,70,A),550]);
+      p.push([txt(65,46,'roster-demo',A),700]);
+      p.push([S('circle',{cx:210,cy:70,r:13,fill:'none',stroke:Y,'stroke-width':3,class:'aq-pop'}),900]);
+      p.push([S('circle',{cx:210,cy:190,r:13,fill:'none',stroke:Y,'stroke-width':3,class:'aq-pop'}),1050]);
+      p.push([txt(232,58,'edited',Y),1200]);
+      p.push([txt(232,222,'edited',Y),1300]);
+      p.push([curve('M300,70 C 380,70 380,130 445,130',A),1600]);   // both sides converge...
+      p.push([curve('M300,190 C 380,190 380,130 445,130',G),1750]); // ...and collide on one line
+      p.push([dot(455,130,R,13),2300]);
+      p.push([txt(455,136,'!','#0d1117','middle'),2450]);
+      p.push([S('rect',{x:495,y:48,width:195,height:164,rx:8,fill:'none',stroke:R,'stroke-width':3,class:'aq-pop'}),2700]);
+      [['<<<<<<< HEAD',G,78],['your line',A,106],['=======',Y,134],["main's line",G,162],['>>>>>>> main',G,190]]
+        .forEach(([s,c,y],i)=>p.push([txt(510,y,s,c,'start','aq-fade'),2900+i*200]));
+      return{parts:p,cap:`You edited this line on <b>roster-demo</b> — someone else edited the <b>same line</b> on <b>main</b>. Git refuses to guess who wins, so it writes <b>both versions</b> between the arrows. Your job: keep the truth, delete the arrows.`};},
+    switch(name){const p=[];const toMain=/^main$/i.test(name);
+      p.push([line(60,170,420,170,G),100]);
+      [120,250,380].forEach((x,i)=>p.push([dot(x,170,T),200+i*150]));
+      p.push([txt(432,175,'main',G),600]);
+      p.push([line(60,90,420,90,A),800]);
+      [120,250,380].forEach((x,i)=>p.push([dot(x,90,A),900+i*150]));
+      p.push([txt(432,95,toMain?'your branch':name,A),1300]);
+      if(toMain){                               // HEAD hops DOWN onto main — the shared trunk
+        const h1=txt(300,66,'HEAD →',Y);p.push([h1,1500]);
+        setTimeout(()=>h1.classList.add('aq-gone'),2700);
+        p.push([curve('M345,92 C 390,110 390,146 415,160',Y),2100]);
+        p.push([txt(300,212,'HEAD → main',Y),2800]);
+      } else {
+        const h1=txt(300,150,'HEAD →',Y);p.push([h1,1500]);
+        setTimeout(()=>h1.classList.add('aq-gone'),2700);   // HEAD hops off main
+        p.push([curve('M345,148 C 390,130 390,112 415,100',Y),2100]);
+        p.push([txt(300,66,'HEAD → '+name,Y),2800]);
+      }
+      return{parts:p,cap:`Your working folder just <b>swapped</b> to <b>${name}</b> — same folder, different version of every file. Nothing was committed; you changed seats, not history.`};},
+    pull(branch){const p=[];
+      p.push([S('circle',{cx:360,cy:45,r:26,fill:'none',stroke:G,'stroke-width':3,class:'aq-pop'}),100]);
+      p.push([txt(412,50,'GitHub',T),300]);
+      p.push([line(60,190,420,190,A),500]);
+      [120,250,380].forEach((x,i)=>p.push([dot(x,190,T),650+i*150]));
+      p.push([txt(432,195,branch,A),1100]);
+      [0,1,2].forEach(i=>{const d=dot(300+i*40,95,GR);d.classList.add('aq-fade');p.push([d,1300+i*250,fly(d,30+i*60,95,'.9s')]);});
+      p.push([txt(360,240,'commits downloaded — local only',GR,'middle'),2900]);
+      return{parts:p,cap:`New commits were <b>downloaded</b> from <b>GitHub</b> into your local <b>${branch}</b>. Pull only brings things <b>down</b> — nothing on GitHub changed.`};},
+    log(){const p=[];const R='#f85149';
+      p.push([line(60,150,420,150,G),100]);
+      [120,240,360].forEach((x,i)=>p.push([dot(x,150,T),250+i*150]));
+      [['scaffold',120,G],['add roster',240,G],['bad reformat',360,R]].forEach(([s,x,c],i)=>{
+        const t=txt(x,182,s,c,'middle');t.setAttribute('font-size',11);p.push([t,700+i*150]);});
+      p.push([txt(300,120,'HEAD →',Y),1200]);
+      p.push([txt(445,155,'newest',G),1400]);
+      return{parts:p,cap:`<b>git log</b> = looking backwards at your save-points, newest first. <b>a1b2c3d</b> is Git's short id for the bad one — that id is what you hand to <b>git revert</b>.`};},
+    revert(hash){const p=[];const R='#f85149';
+      p.push([line(60,150,480,150,G),100]);
+      p.push([dot(120,150,T),250]);p.push([dot(240,150,T),400]);
+      p.push([dot(360,150,R),550]);
+      [['scaffold',120,G],['add roster',240,G],['bad reformat',360,R]].forEach(([s,x,c],i)=>{
+        const t=txt(x,182,s,c,'middle');t.setAttribute('font-size',11);p.push([t,750+i*150]);});
+      p.push([S('circle',{cx:360,cy:150,r:14,fill:'none',stroke:R,'stroke-width':3,class:'aq-pop'}),1200]);
+      p.push([txt(360,118,'reverting '+hash,R,'middle'),1350]);
+      p.push([curve('M382,140 C 415,118 445,118 474,140',GR),1700]);
+      p.push([dot(480,150,GR),2100]);
+      const u=txt(480,212,'the undo commit',GR,'middle');u.setAttribute('font-size',11);p.push([u,2300]);
+      return{parts:p,cap:`Git did <b>not delete</b> the bad commit — it added a <b>new commit</b> doing the exact opposite, on top. History stays honest: your mistake becomes the record of the fix. That's why <b>push -f</b> is forbidden.`};},
+    status(){const p=[];
+      const ca=S('rect',{x:90,y:65,width:150,height:130,rx:8,fill:'none',stroke:T,'stroke-width':3,class:'aq-pop'});
+      p.push([ca,100]);
+      [[104,95,216,G],[104,115,180,G]].forEach(([x,y,xe,c],i)=>{const l=S('path',{d:`M${x},${y} H${xe}`,stroke:c,'stroke-width':3,class:'aq-pop'});p.push([l,300+i*120]);});
+      p.push([txt(165,180,'last commit',G,'middle'),550]);
+      const cb=S('rect',{x:380,y:65,width:150,height:130,rx:8,fill:'none',stroke:Y,'stroke-width':3,class:'aq-pop'});
+      p.push([cb,700]);
+      [[394,95,506,G],[394,115,460,Y]].forEach(([x,y,xe,c],i)=>{const l=S('path',{d:`M${x},${y} H${xe}`,stroke:c,'stroke-width':3,class:'aq-pop'});p.push([l,900+i*120]);});
+      p.push([txt(455,180,'right now',Y,'middle'),1150]);
+      p.push([txt(310,135,'vs',Y,'middle'),1350]);
+      p.push([txt(360,40,'NOTES.md changed since your last commit',Y,'middle'),1550]);
+      return{parts:p,cap:`<b>git status</b> = Git asking <b>"what changed?"</b> — it compares your folder against your last commit and flags <b>NOTES.md</b>. Ask before you touch anything.`};},
+    diff(){const p=[];const R='#f85149';
+      p.push([S('rect',{x:200,y:50,width:320,height:140,rx:8,fill:'none',stroke:G,'stroke-width':3,class:'aq-pop'}),100]);
+      p.push([txt(360,38,'NOTES.md',T,'middle'),300]);
+      p.push([txt(240,95,'- the commands I used today',R),600]);
+      p.push([txt(240,130,'- ...all the rest...',R),900]);
+      p.push([txt(240,165,'- ...deleted sections...',R),1200]);
+      p.push([txt(690,105,'the damage,',Y,'end'),1600]);
+      p.push([txt(690,127,'in black and white',Y,'end'),1750]);
+      return{parts:p,cap:`<b>git diff</b> shows every line that changed since your last commit — <b>the damage in black and white</b>. Still unfixed, still fully undoable.`};},
+    restore(file){const p=[];
+      p.push([line(40,150,190,150,G),100]);
+      p.push([dot(100,150,T),250]);
+      const lc=txt(100,178,'your last commit',G,'middle');lc.setAttribute('font-size',11);p.push([lc,400]);
+      const bad=S('rect',{x:400,y:65,width:150,height:130,rx:8,fill:'none',stroke:Y,'stroke-width':3,class:'aq-pop'});
+      p.push([bad,600]);
+      const blines=[];
+      [[414,95,526,G],[414,115,480,Y]].forEach(([x,y,xe,c],i)=>{const l=S('path',{d:`M${x},${y} H${xe}`,stroke:c,'stroke-width':3,class:'aq-pop'});blines.push(l);p.push([l,700+i*120]);});
+      const bl=txt(475,180,file,Y,'middle');bl.setAttribute('font-size',11);p.push([bl,950]);
+      const dl=txt(475,50,'damaged',Y,'middle');p.push([dl,1050]);
+      const good=S('rect',{x:70,y:65,width:150,height:130,rx:8,fill:'none',stroke:T,'stroke-width':3,class:'aq-pop'});
+      p.push([good,1400,fly(good,330,0,'1s')]);
+      [[84,95,180,G],[84,115,156,G]].forEach(([x,y,xe,c],i)=>{const l=S('path',{d:`M${x},${y} H${xe}`,stroke:c,'stroke-width':3,class:'aq-pop'});p.push([l,1450+i*100,fly(l,330,0,'1s')]);});
+      const gl=txt(145,180,file,T,'middle');gl.setAttribute('font-size',11);p.push([gl,1600,fly(gl,330,0,'1s')]);
+      setTimeout(()=>{[bad,bl,dl,...blines].forEach(e=>e.classList.add('aq-gone'));},2500); // damaged copy fades as the good one lands
+      p.push([S('path',{d:'M430,120 L445,135 L472,104',fill:'none',stroke:GR,'stroke-width':5,class:'aq-pop'}),2600]);
+      p.push([txt(475,50,'restored',GR,'middle'),2800]);
+      return{parts:p,cap:`<b>git restore</b> copied <b>${file}</b> straight back out of your last commit — the damage never existed. This is why you <b>commit often</b>: every commit is an undo point.`};},
+    commit(){const p=[];
+      p.push([line(60,190,300,190,G),100]);
+      p.push([dot(150,190,T),250]);
+      p.push([txt(310,195,'main',G),600]);
+      p.push([line(60,90,300,90,A),800]);
+      [120,220].forEach((x,i)=>p.push([dot(x,90,A),900+i*150]));
+      p.push([txt(65,64,'your branch',A),1200]);
+      p.push([line(300,90,380,90,A),1600]);
+      p.push([dot(380,90,A),2300]);
+      p.push([S('circle',{cx:380,cy:90,r:11,fill:'none',stroke:Y,'stroke-width':2,class:'aq-pop'}),2500]);
+      p.push([txt(345,60,'new commit',Y),2700]);
+      return{parts:p,cap:'Your work is saved forever — a brand-new commit just landed on your branch. This is your <b>safe save point</b>.'};},
+    add(file){const p=[];
+      p.push([S('rect',{x:430,y:60,width:180,height:120,rx:10,fill:'none',stroke:G,'stroke-width':3,class:'aq-pop'}),100]);
+      p.push([txt(520,45,'staged',G,'middle'),300]);
+      const card=S('rect',{x:120,y:80,width:64,height:90,rx:6,fill:'none',stroke:T,'stroke-width':3,class:'aq-pop'});
+      p.push([card,600,fly(card,315,0)]);
+      [105,125].forEach((y,i)=>{const l=S('path',{d:`M132,${y} H${i?158:172}`,stroke:G,'stroke-width':3,class:'aq-pop'});p.push([l,800+i*120,fly(l,315,0)]);});
+      const lbl=txt(152,155,file,T,'middle','aq-pop');
+      lbl.setAttribute('font-size',11);
+      p.push([lbl,950,fly(lbl,315,0)]);
+      p.push([S('path',{d:'M505,122 L517,135 L538,106',fill:'none',stroke:GR,'stroke-width':5,class:'aq-pop'}),1900]);
+      return{parts:p,cap:`<b>${file}</b> is now marked <b>ready to commit</b> — nothing has left your laptop yet.`};},
+    clone(){const p=[];
+      p.push([S('circle',{cx:360,cy:50,r:30,fill:'none',stroke:G,'stroke-width':3,class:'aq-pop'}),100]);
+      p.push([txt(360,95,'GitHub',T,'middle'),300]);
+      p.push([S('rect',{x:290,y:175,width:50,height:16,rx:3,fill:'none',stroke:G,'stroke-width':3,class:'aq-pop'}),500]);
+      p.push([S('rect',{x:290,y:188,width:140,height:56,rx:6,fill:'none',stroke:G,'stroke-width':3,class:'aq-pop'}),600]);
+      p.push([txt(360,222,'your laptop',G,'middle'),800]);
+      [0,1,2].forEach(i=>{const d=dot(320+i*40,110,GR);d.classList.add('aq-fade');p.push([d,1000+i*250,fly(d,0,80,'.9s')]);});
+      return{parts:p,cap:'A full copy of the repo — every file, every commit — lands on your laptop. The original on <b>GitHub</b> is untouched.'};},
+  };
+  function pick(text,outs){
+    const hits=[];
+    const mergedConflict=outs&&outs.some(o=>/CONFLICT/i.test(o.textContent)); // git merge that FAILS
+    for(const s of text.split('&&').map(x=>x.trim())){
+      let m;
+      if(m=s.match(/^git switch -c (\S+)/i))hits.push((n=>()=>B.branch(n))(m[1]));
+      else if(m=s.match(/^git branch (\S+)/i))hits.push((n=>()=>B.branch(n))(m[1]));
+      else if(m=s.match(/^git switch (\S+)/i))hits.push((n=>()=>B.switch(n))(m[1]));
+      else if(m=s.match(/^git pull\s+origin\s+(\S+)/i))hits.push((n=>()=>B.pull(n))(m[1]));
+      else if(/^git pull\b/i.test(s))hits.push(()=>B.pull('your branch'));
+      else if(/^git log\b/i.test(s))hits.push(B.log);
+      else if(m=s.match(/^git revert (\S+)/i))hits.push((h=>()=>B.revert(h))(m[1]));
+      else if(/^git revert\b/i.test(s))hits.push(()=>B.revert('your commit'));
+      else if(/^git status\b/i.test(s))hits.push(B.status);
+      else if(/^git diff\b/i.test(s))hits.push(B.diff);
+      else if(m=s.match(/^git restore (\S+)/i))hits.push((f=>()=>B.restore(f))(m[1]));
+      else if(/^git restore\b/i.test(s))hits.push(()=>B.restore('the file'));
+      else if(m=s.match(/^git push\s+(?:-u\s+)?origin\s+(\S+)/i))hits.push((n=>()=>B.push(n))(m[1]));
+      else if(/^git push\b/i.test(s))hits.push(()=>B.push('your branch'));
+      else if(/^git merge\b/i.test(s))hits.push(mergedConflict?B.conflict:B.merge);
+      else if(/^git commit\b/i.test(s)||/^npm run commit\b/i.test(s))hits.push(B.commit);
+      else if(m=s.match(/^git add (\S+)/i))hits.push((f=>()=>B.add(f))(m[1]));
+      else if(/^git clone\b/i.test(s))hits.push(B.clone);
+    }
+    if(!hits.length)return null;
+    if(hits.length===1)return hits[0];
+    return()=>({steps:hits.map(h=>()=>h())});   // compound: one animated step per sub-command
+  }
+  let pending=null,stepping=null;
+  function show(cmd,make,done){
+    cmdEl.textContent='$ '+cmd;
+    modal.classList.add('show');pending=done||null;stepping=null;
+    const r=make();
+    if(r.steps){runSteps(r.steps,0);return;}
+    kickEl.textContent='what just happened';
+    msgEl.innerHTML=r.cap;
+    hintEl.textContent='Esc, Enter or click to continue';
+    requestAnimationFrame(()=>r.parts.forEach(([el,t,fn])=>setTimeout(()=>{el.classList.add('on');fn&&fn(el)},t)));
+  }
+  function runSteps(steps,i){                   // compound commands: play one builder per step, presenter-paced
+    if(i>=steps.length)return;                  // (advance() closes when the sequence is done)
+    stage.innerHTML='';
+    kickEl.textContent='what just happened · step '+(i+1)+' of '+steps.length;
+    const r=steps[i]();
+    msgEl.innerHTML=r.cap;
+    hintEl.textContent=(i+1<steps.length)?'Enter, Space or click = next step · Esc = skip to output':'Enter, Space or click = continue · Esc = skip to output';
+    stepping={steps,i};
+    requestAnimationFrame(()=>r.parts.forEach(([el,t,fn])=>setTimeout(()=>{el.classList.add('on');fn&&fn(el)},t)));
+  }
+  function advance(){                            // Enter/Space/click while the popup is up
+    if(!stepping){close();return;}
+    const s=stepping;
+    if(s.i+1>=s.steps.length){close();return;}    // 'continue' on the last step = close and reveal output
+    stepping=null;
+    runSteps(s.steps,s.i+1);
+  }
+  function close(){
+    if(!modal.classList.contains('show'))return;
+    stepping=null;
+    modal.classList.remove('show');stage.innerHTML='';
+    const d=pending;pending=null;d&&d();
+  }
+  modal.addEventListener('click',advance);
+  addEventListener('keydown',e=>{           // while the popup is up, swallow deck keys
+    if(!modal.classList.contains('show'))return;
+    e.stopPropagation();
+    if(e.key==='Escape'){e.preventDefault();close();}
+    else if(e.key==='Enter'||e.key===' '){e.preventDefault();advance();}
+  },true);
+  const _go=go;window.go=n=>{close();_go(n);};   // navigating closes the popup
+  /* "Anatomy of a conflict" has no terminal to type into — the conflict screen
+     itself is the trigger: click it to play how the conflict happened. */
+  const cb=document.querySelector('.conflict');
+  if(cb){cb.style.cursor='pointer';
+    const hint=document.createElement('div');
+    hint.textContent='▶ click the screen above to see how this happened';
+    hint.style.cssText='color:#2f81f7;font-size:12px;margin:.2em 0 0';
+    cb.insertAdjacentElement('afterend',hint);
+    cb.addEventListener('click',()=>show('git merge main',B.conflict));
+  }
+  window.ANIM={pick,show,close};
+})();
+</script>
+</body>
+</html>
